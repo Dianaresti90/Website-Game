@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Element Spinner</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    body {
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      color: white;
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    /* Start Screen */
+    #start-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+      background: url('/api/placeholder/1200/800') center/cover;
+      position: relative;
+      z-index: 10;
+    }
+    
+    #start-screen::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: -1;
+    }
+    
+    h1 {
+      font-size: 3.5rem;
+      margin-bottom: 1rem;
+      text-shadow: 0 0 10px rgba(77, 213, 240, 0.7);
+      animation: glow 2s infinite alternate;
+    }
+    
+    @keyframes glow {
+      from {
+        text-shadow: 0 0 10px rgba(77, 213, 240, 0.7);
+      }
+      to {
+        text-shadow: 0 0 20px rgba(77, 213, 240, 0.9), 0 0 30px rgba(77, 213, 240, 0.7);
+      }
+    }
+    
+    p {
+      font-size: 1.2rem;
+      margin-bottom: 2rem;
+      max-width: 600px;
+    }
+    
+    button {
+      padding: 0.8rem 2rem;
+      font-size: 1.2rem;
+      background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+      border: none;
+      border-radius: 50px;
+      color: white;
+      cursor: pointer;
+      transition: transform 0.3s, box-shadow 0.3s;
+      box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+    }
+    
+    button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(255, 107, 107, 0.6);
+    }
+    
+    button:disabled {
+      opacity: 0.7;
+      transform: none;
+      cursor: not-allowed;
+    }
+    
+    /* Game Screen */
+    #game-screen {
+      display: none;
+      height: 100vh;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem;
+    }
+    
+    #stats {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 800px;
+      margin-bottom: 1rem;
+    }
+    
+    .stat {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-size: 1.2rem;
+    }
+    
+    #spinner-container {
+      width: 100%;
+      max-width: 800px;
+      height: 400px;
+      position: relative;
+      margin: 2rem 0;
+      perspective: 1000px;
+      overflow: hidden;
+      border-radius: 8px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+    
+    #spinner {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+      transition: transform 0.5s ease;
+      transform-style: preserve-3d;
+    }
+    
+    #spinner::-webkit-scrollbar {
+      display: none;
+    }
+    
+    /* Highlight indicator */
+    #selector {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px;
+      height: 100%;
+      border: 5px solid rgba(255, 255, 255, 0.8);
+      border-radius: 8px;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+      z-index: 5;
+      pointer-events: none;
+    }
+    
+    .column {
+      flex: 0 0 200px;
+      height: 100%;
+      scroll-snap-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 1rem;
+      border-right: 2px solid rgba(255, 255, 255, 0.1);
+      transition: transform 0.3s, opacity 0.5s;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .column::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(45deg, rgba(255, 255, 255, 0.1), transparent);
+      z-index: 1;
+    }
+    
+    .column h3 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .column.highlighted {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+    }
+    
+    .column.blur {
+      filter: blur(1px);
+    }
+    
+    .column.answered {
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    #question-box {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 800px;
+      margin-top: 1rem;
+      display: none;
+      transform: translateY(20px);
+      opacity: 0;
+      transition: all 0.5s ease;
+    }
+    
+    #question-box.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    
+    #options {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    
+    .option {
+      padding: 0.8rem;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+    }
+    
+    .option:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+    
+    .option.correct {
+      background: rgba(107, 203, 119, 0.5);
+    }
+    
+    .option.incorrect {
+      background: rgba(255, 107, 107, 0.5);
+    }
+    
+    #result {
+      margin-top: 1rem;
+      font-size: 1.2rem;
+      font-weight: bold;
+      height: 30px;
+    }
+    
+    #game-over {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    
+    #game-over.show {
+      opacity: 1;
+    }
+    
+    #game-over h2 {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      color: #ff6b6b;
+    }
+    
+    /* Spinner animation */
+    @keyframes spin-effect {
+      0% { transform: translateX(0); }
+      10% { transform: translateX(-1000%); }
+      90% { transform: translateX(500%); }
+      100% { transform: translateX(0); }
+    }
+    
+    .spin-effect {
+      animation: spin-effect 5s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards;
+    }
+    
+    /* Additional selector styling */
+    #selector {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px;
+      height: 100%;
+      border: 5px solid rgba(255, 255, 255, 0.8);
+      border-radius: 8px;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+      z-index: 5;
+      pointer-events: none;
+      transition: all 0.3s ease;
+    }
+    
+    #selector::before, #selector::after {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background-color: white;
+      top: 50%;
+      transform: translateY(-50%);
+      clip-path: polygon(0% 50%, 100% 0%, 100% 100%);
+    }
+    
+    #selector::before {
+      left: -15px;
+    }
+    
+    #selector::after {
+      right: -15px;
+      transform: translateY(-50%) rotate(180deg);
+    }
+    
+    /* Celebration effects */
+    @keyframes confetti {
+      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(1000px) rotate(720deg); opacity: 0; }
+    }
+    
+    .confetti {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background-color: #f00;
+      opacity: 0;
+      z-index: 100;
+    }
+    
+    /* Highlights */
+    .highlight-flash {
+      animation: highlight-flash 0.5s ease;
+    }
+    
+    @keyframes highlight-flash {
+      0%, 100% { box-shadow: 0 0 0 rgba(255, 255, 255, 0); }
+      50% { box-shadow: 0 0 40px rgba(255, 255, 255, 0.8); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Start Screen -->
+  <div id="start-screen">
+    <h1>Element Spinner Challenge</h1>
+    <p>Test your knowledge of the periodic table! Spin the wheel, answer questions about elements, groups, and properties to earn points. One wrong answer and it's game over!</p>
+    <button id="start-btn">START GAME</button>
+  </div>
+
+  <!-- Game Screen -->
+  <div id="game-screen">
+    <div id="stats">
+      <div class="stat">Score: <span id="score">0</span></div>
+      <div class="stat">Questions Answered: <span id="answered">0</span>/20</div>
+    </div>
+    
+    <div id="spinner-container">
+      <div id="spinner"></div>
+      <div id="selector"></div>
+    </div>
+    
+    <div id="question-box">
+      <h3 id="question"></h3>
+      <div id="options"></div>
+      <div id="result"></div>
+    </div>
+    
+    <button id="spin-btn">SPIN</button>
+  </div>
+
+  <!-- Game Over Screen -->
+  <div id="game-over">
+    <h2>GAME OVER</h2>
+    <p>Your final score: <span id="final-score">0</span></p>
+    <button id="play-again-btn">PLAY AGAIN</button>
+  </div>
+
+  <script>
+    // Game data
+    const questions = [
+      {
+        question: "Which element is a noble gas?",
+        options: ["Chlorine", "Helium", "Sodium", "Iron"],
+        answer: "Helium",
+        color: "#FF6B6B"
+      },
+      {
+        question: "Which element has the symbol 'Au'?",
+        options: ["Silver", "Gold", "Aluminum", "Argon"],
+        answer: "Gold",
+        color: "#FFD93D"
+      },
+      {
+        question: "Which element is in Group 1 (alkali metals)?",
+        options: ["Calcium", "Potassium", "Bromine", "Oxygen"],
+        answer: "Potassium",
+        color: "#6BCB77"
+      },
+      {
+        question: "Which element has the atomic number 6?",
+        options: ["Carbon", "Nitrogen", "Boron", "Oxygen"],
+        answer: "Carbon",
+        color: "#4D96FF"
+      },
+      {
+        question: "Which element is a halogen?",
+        options: ["Neon", "Magnesium", "Chlorine", "Calcium"],
+        answer: "Chlorine",
+        color: "#9D65C9"
+      },
+      {
+        question: "Which element is the lightest metal?",
+        options: ["Sodium", "Lithium", "Aluminum", "Beryllium"],
+        answer: "Lithium",
+        color: "#F2C94C"
+      },
+      {
+        question: "Which element is liquid at room temperature?",
+        options: ["Bromine", "Chlorine", "Iodine", "Fluorine"],
+        answer: "Bromine",
+        color: "#FF9A76"
+      },
+      {
+        question: "Which element has the highest electronegativity?",
+        options: ["Oxygen", "Chlorine", "Fluorine", "Nitrogen"],
+        answer: "Fluorine",
+        color: "#FF6B6B"
+      },
+      {
+        question: "Which element is in Period 3?",
+        options: ["Calcium", "Sodium", "Lithium", "Potassium"],
+        answer: "Sodium",
+        color: "#4ECDC4"
+      },
+      {
+        question: "Which element is a transition metal?",
+        options: ["Sodium", "Silicon", "Iron", "Sulfur"],
+        answer: "Iron",
+        color: "#5E60CE"
+      },
+      {
+        question: "Which element has the highest melting point?",
+        options: ["Carbon", "Tungsten", "Iron", "Gold"],
+        answer: "Tungsten",
+        color: "#F72585"
+      },
+      {
+        question: "Which element is essential for hemoglobin?",
+        options: ["Iron", "Calcium", "Potassium", "Sodium"],
+        answer: "Iron",
+        color: "#7209B7"
+      },
+      {
+        question: "Which element is the most abundant in Earth's crust?",
+        options: ["Silicon", "Iron", "Oxygen", "Carbon"],
+        answer: "Oxygen",
+        color: "#3A0CA3"
+      },
+      {
+        question: "Which element is a lanthanide?",
+        options: ["Zinc", "Cesium", "Neodymium", "Lead"],
+        answer: "Neodymium",
+        color: "#4361EE"
+      },
+      {
+        question: "Which element was discovered by Marie Curie?",
+        options: ["Uranium", "Polonium", "Radium", "Both Polonium and Radium"],
+        answer: "Both Polonium and Radium",
+        color: "#4CC9F0"
+      },
+      {
+        question: "Which element has the symbol 'Pb'?",
+        options: ["Platinum", "Phosphorus", "Lead", "Palladium"],
+        answer: "Lead",
+        color: "#FF9F1C"
+      },
+      {
+        question: "Which element is a metalloid?",
+        options: ["Magnesium", "Silicon", "Chlorine", "Sodium"],
+        answer: "Silicon",
+        color: "#2EC4B6"
+      },
+      {
+        question: "Which element is used in nuclear reactors as fuel?",
+        options: ["Thorium", "Uranium", "Plutonium", "All of these"],
+        answer: "All of these",
+        color: "#E71D36"
+      },
+      {
+        question: "Which element is named after a planet?",
+        options: ["Selenium", "Uranium", "Neptunium", "Tellurium"],
+        answer: "Neptunium",
+        color: "#011627"
+      },
+      {
+        question: "Which element has the lowest density?",
+        options: ["Hydrogen", "Helium", "Lithium", "Beryllium"],
+        answer: "Hydrogen",
+        color: "#FDCA40"
+      }
+    ];
+
+    // Game variables
+    let score = 0;
+    let answeredQuestions = 0;
+    let currentQuestion = null;
+    let availableQuestions = [...questions];
+    let isSpinning = false;
+    let spinDuration = 5000; // Duration in milliseconds
+    let selectedColumnIndex = -1;
+    let answeredIndices = []; // Track which questions have been answered
+    
+    // Store columns for proper positioning
+    let columnElements = [];
+    // Store container width for calculations
+    let containerWidth = 0;
+
+    // DOM Elements
+    const startScreen = document.getElementById('start-screen');
+    const gameScreen = document.getElementById('game-screen');
+    const startBtn = document.getElementById('start-btn');
+    const spinner = document.getElementById('spinner');
+    const spinBtn = document.getElementById('spin-btn');
+    const questionBox = document.getElementById('question-box');
+    const questionEl = document.getElementById('question');
+    const optionsEl = document.getElementById('options');
+    const resultEl = document.getElementById('result');
+    const scoreEl = document.getElementById('score');
+    const answeredEl = document.getElementById('answered');
+    const gameOverScreen = document.getElementById('game-over');
+    const finalScoreEl = document.getElementById('final-score');
+    const playAgainBtn = document.getElementById('play-again-btn');
+    const spinnerContainer = document.getElementById('spinner-container');
+
+    // Initialize game
+    function initGame() {
+      // Set container width for positioning calculations
+      containerWidth = spinnerContainer.clientWidth;
+      
+      // Create spinner columns
+      availableQuestions.forEach((q, index) => {
+        const column = document.createElement('div');
+        column.className = 'column';
+        column.style.background = q.color;
+        column.dataset.index = index;
+        
+        const h3 = document.createElement('h3');
+        h3.textContent = `Question ${index + 1}`;
+        
+        column.appendChild(h3);
+        spinner.appendChild(column);
+        columnElements.push(column);
+      });
+      
+      // Add extra duplicate columns for a more continuous spinning effect
+      const originalColumns = [...columnElements];
+      originalColumns.forEach(col => {
+        const clone = col.cloneNode(true);
+        spinner.appendChild(clone);
+      });
+      
+      // Make sure column width is exactly 200px to match selector width
+      const allColumns = spinner.querySelectorAll('.column');
+      allColumns.forEach(col => {
+        col.style.flexBasis = '200px';
+        col.style.width = '200px';
+      });
+      
+      // Add extra padding at the beginning to center columns
+      const paddingDiv = document.createElement('div');
+      paddingDiv.style.width = (containerWidth / 2) - 100 + 'px'; // Half container minus half column
+      paddingDiv.style.flexShrink = '0';
+      spinner.insertBefore(paddingDiv, spinner.firstChild);
+      
+      // Add padding at the end too
+      const endPadding = paddingDiv.cloneNode();
+      spinner.appendChild(endPadding);
+      
+      // Center the spinner initially
+      centerSpinner();
+      
+      // Event listeners
+      spinBtn.addEventListener('click', spinTheWheel);
+      
+      // Add resize event listener to recalculate on window resize
+      window.addEventListener('resize', () => {
+        containerWidth = spinnerContainer.clientWidth;
+        // Update padding on resize
+        paddingDiv.style.width = (containerWidth / 2) - 100 + 'px';
+        endPadding.style.width = (containerWidth / 2) - 100 + 'px';
+      });
+    }
+
+    // Center the spinner
+    function centerSpinner() {
+      const initialPosition = (containerWidth / 2) - 100;
+      spinner.scrollLeft = 0;
+    }
+
+    // Start the game
+    startBtn.addEventListener('click', () => {
+      startScreen.style.display = 'none';
+      gameScreen.style.display = 'flex';
+      initGame();
+    });
+
+    // Play again
+    playAgainBtn.addEventListener('click', () => {
+      location.reload();
+    });
+
+    // Spin the wheel
+    function spinTheWheel() {
+      if (availableQuestions.length === 0 || isSpinning) {
+        return;
+      }
+      
+      isSpinning = true;
+      spinBtn.disabled = true;
+      questionBox.style.display = 'none';
+      
+      // Reset any previous question
+      resultEl.textContent = '';
+      
+      // Get random selection from available questions
+      const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+      const questionIndex = questions.indexOf(availableQuestions[randomIndex]);
+      selectedColumnIndex = questionIndex;
+      
+      // Reset scroll position before spinning for consistent animation
+      centerSpinner();
+      
+      // Apply spin effect to the spinner
+      spinner.classList.add('spin-effect');
+      
+      // Highlight selector during spin
+      const selector = document.getElementById('selector');
+      selector.style.boxShadow = '0 0 30px rgba(255, 255, 255, 0.8)';
+      
+      // Create the blurring effect during spin
+      const columns = spinner.querySelectorAll('.column');
+      columns.forEach(col => {
+        col.classList.add('blur');
+      });
+      
+      // Wait for animation to complete
+      setTimeout(() => {
+        // Stop the spinner
+        spinner.classList.remove('spin-effect');
+        
+        // Position the selected column perfectly in the center
+        positionSelectedColumn();
+        
+        // Reset selector highlight
+        setTimeout(() => {
+          selector.style.boxShadow = '0 0 20px rgba(255, 255, 255, 0.5)';
+        }, 500);
+        
+        // Remove blur effect
+        columns.forEach(col => {
+          col.classList.remove('blur');
+        });
+        
+        // Highlight the selected column
+        highlightSelectedColumn();
+        
+        // Wait a moment before showing the question
+        setTimeout(() => {
+          showQuestion(availableQuestions[randomIndex]);
+          isSpinning = false;
+        }, 800);
+      }, spinDuration);
+    }
+
+    // Position the selected column in the center
+    function positionSelectedColumn() {
+      const columns = spinner.querySelectorAll('.column');
+      let targetColumn = null;
+      
+      // Find the first occurrence of the column with the selected index
+      for (let col of columns) {
+        if (parseInt(col.dataset.index) === selectedColumnIndex) {
+          targetColumn = col;
+          break;
+        }
+      }
+      
+      if (targetColumn) {
+        // This calculates exactly how far to scroll to center the column
+        const leftPadding = spinner.firstChild.offsetWidth;
+        const scrollPosition = targetColumn.offsetLeft - leftPadding;
+        
+        // First, set it immediately to ensure proper positioning
+        spinner.scrollLeft = scrollPosition;
+        
+        // Then, set it with smooth behavior for visual effect
+        setTimeout(() => {
+          spinner.scrollTo({
+            left: scrollPosition,
+            behavior: 'smooth'
+          });
+        }, 50);
+      }
+    }
+
+    // Highlight the selected column
+    function highlightSelectedColumn() {
+      const columns = spinner.querySelectorAll('.column');
+      columns.forEach(col => {
+        if (parseInt(col.dataset.index) === selectedColumnIndex) {
+          col.classList.add('highlighted');
+          col.classList.add('highlight-flash');
+        } else {
+          col.classList.remove('highlighted');
+          col.classList.remove('highlight-flash');
+        }
+      });
+    }
+
+    // Show question
+    function showQuestion(q) {
+      currentQuestion = q;
+      
+      questionBox.style.display = 'block';
+      setTimeout(() => {
+        questionBox.classList.add('show');
+      }, 10);
+      
+      questionEl.textContent = q.question;
+      
+      optionsEl.innerHTML = '';
+      q.options.forEach(option => {
+        const optionEl = document.createElement('div');
+        optionEl.className = 'option';
+        optionEl.textContent = option;
+        optionEl.addEventListener('click', () => checkAnswer(option, optionEl));
+        optionsEl.appendChild(optionEl);
+      });
+      
+      resultEl.textContent = '';
+    }
+
+    // Check answer
+    function checkAnswer(selected, optionEl) {
+      const correct = selected === currentQuestion.answer;
+      
+      // Disable all options
+      const options = optionsEl.querySelectorAll('.option');
+      options.forEach(opt => {
+        opt.style.pointerEvents = 'none';
+        
+        if (opt.textContent === currentQuestion.answer) {
+          opt.classList.add('correct');
+        } else if (opt === optionEl && !correct) {
+          opt.classList.add('incorrect');
+        }
+      });
+      
+      if (correct) {
+        resultEl.textContent = 'Correct!';
+        resultEl.style.color = '#6BCB77';
+        score += 10;
+        scoreEl.textContent = score;
+        
+        // Get the index of the question
+        const questionIndex = questions.indexOf(currentQuestion);
+        
+        // Add to answered indices
+        answeredIndices.push(questionIndex);
+        
+        // Remove the answered question from available questions
+        const index = availableQuestions.indexOf(currentQuestion);
+        if (index > -1) {
+          availableQuestions.splice(index, 1);
+        }
+        
+        // Hide the column for this question
+        hideAnsweredColumns(questionIndex);
+        
+        // Create celebration effect
+        createCelebration();
+        
+        answeredQuestions++;
+        answeredEl.textContent = answeredQuestions;
+        
+        setTimeout(() => {
+          questionBox.classList.remove('show');
+          
+          setTimeout(() => {
+            questionBox.style.display = 'none';
+            spinBtn.disabled = false;
+            
+            if (availableQuestions.length === 0) {
+              endGame(true);
+            }
+          }, 500);
+        }, 1500);
+      } else {
+        resultEl.textContent = `Wrong! The correct answer is ${currentQuestion.answer}`;
+        resultEl.style.color = '#FF6B6B';
+        
+        setTimeout(() => {
+          endGame(false);
+        }, 1500);
+      }
+    }
+
+    // Hide columns for answered questions
+    function hideAnsweredColumns(questionIndex) {
+      const columns = spinner.querySelectorAll('.column');
+      columns.forEach(col => {
+        if (parseInt(col.dataset.index) === questionIndex) {
+          col.classList.add('answered');
+        }
+      });
+    }
+
+    // Create celebration effect
+    function createCelebration() {
+      const colors = ['#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#9D65C9'];
+      
+      for (let i = 0; i < 30; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.left = `${Math.random() * 100}%`;
+        confetti.style.top = `${Math.random() * 100}%`;
+        confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.width = `${Math.random() * 10 + 5}px`;
+        confetti.style.height = `${Math.random() * 10 + 5}px`;
+        confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+        confetti.style.opacity = '1';
+        
+        document.body.appendChild(confetti);
+        
+        // Animate confetti
+        confetti.style.animation = `confetti ${Math.random() * 3 + 2}s ease forwards`;
+        
+        // Remove confetti after animation
+        setTimeout(() => {
+          confetti.remove();
+        }, 5000);
+      }
+    }
+
+    // End game
+    function endGame(won) {
+      gameOverScreen.style.display = 'flex';
+      setTimeout(() => {
+        gameOverScreen.classList.add('show');
+      }, 10);
+      
+      finalScoreEl.textContent = score;
+      
+      if (won) {
+        document.querySelector('#game-over h2').textContent = 'YOU WIN!';
+        document.querySelector('#game-over h2').style.color = '#6BCB77';
+        createCelebration();
+      }
+    }
+  </script>
+</body>
+</html>
